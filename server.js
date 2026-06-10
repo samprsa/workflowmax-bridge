@@ -19,14 +19,14 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  const authUrl = `https://login.xero.com/identity/connect/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid profile email workflowmax offline_access&state=random123`;
+  const authUrl = `https://oauth.workflowmax.com/oauth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid profile email workflowmax offline_access&state=random123&prompt=consent`;
   res.redirect(authUrl);
 });
 
 app.get('/callback', async (req, res) => {
   const { code } = req.query;
   try {
-    const response = await axios.post('https://identity.xero.com/connect/token',
+    const response = await axios.post('https://oauth.workflowmax.com/oauth/token',
       new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, client_id: CLIENT_ID, client_secret: CLIENT_SECRET }),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
@@ -41,7 +41,7 @@ app.get('/callback', async (req, res) => {
 async function getValidToken() {
   if (!storedTokens) throw new Error('Not authenticated');
   if (Date.now() > storedTokens.expires_at - 60000) {
-    const response = await axios.post('https://identity.xero.com/connect/token',
+    const response = await axios.post('https://oauth.workflowmax.com/oauth/token',
       new URLSearchParams({ grant_type: 'refresh_token', refresh_token: storedTokens.refresh_token, client_id: CLIENT_ID, client_secret: CLIENT_SECRET }),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
@@ -54,8 +54,10 @@ async function getValidToken() {
 app.get('/jobs', async (req, res) => {
   try {
     const token = await getValidToken();
+    const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    const orgId = decoded.org_id || decoded.organisation_id;
     const response = await axios.get('https://api.workflowmax2.com/job.api/current', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}`, account_id: orgId }
     });
     res.json(response.data);
   } catch (err) {
