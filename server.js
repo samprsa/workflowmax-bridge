@@ -9,6 +9,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = 'https://workflowmax-bridge.onrender.com/callback';
 
 let storedTokens = null;
+let orgId = null;
 
 app.get('/', (req, res) => {
   if (storedTokens) {
@@ -32,6 +33,13 @@ app.get('/callback', async (req, res) => {
     );
     storedTokens = response.data;
     storedTokens.expires_at = Date.now() + (storedTokens.expires_in * 1000);
+    // Decode org ID from JWT
+    try {
+      const payload = JSON.parse(Buffer.from(storedTokens.access_token.split('.')[1], 'base64').toString());
+      orgId = payload.org_id || payload.organisation_id || payload.account_id;
+      console.log('JWT payload keys:', Object.keys(payload));
+      console.log('Org ID:', orgId);
+    } catch(e) { console.log('JWT decode error:', e.message); }
     res.redirect('/');
   } catch (err) {
     res.status(500).send('Authentication failed: ' + JSON.stringify(err.response?.data));
@@ -54,14 +62,22 @@ async function getValidToken() {
 app.get('/jobs', async (req, res) => {
   try {
     const token = await getValidToken();
-    const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    const orgId = decoded.org_id || decoded.organisation_id;
-    const response = await axios.get('https://api.workflowmax2.com/job.api/current', {
-      headers: { Authorization: `Bearer ${token}`, account_id: orgId }
-    });
+    const headers = { Authorization: `Bearer ${token}` };
+    if (orgId) headers.account_id = orgId;
+    const response = await axios.get('https://api.workflowmax2.com/job.api/current', { headers });
     res.json(response.data);
   } catch (err) {
-    res.status(500).json({ error: err.message, details: err.response?.data });
+    res.status(500).json({ error: err.message, details: err.response?.data, orgId });
+  }
+});
+
+app.get('/debug', async (req, res) => {
+  try {
+    const token = await getValidToken();
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    res.json({ orgId, jwtPayload: payload });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
