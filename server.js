@@ -3,6 +3,7 @@ const axios = require('axios');
 const app = express();
 
 app.use(express.json());
+app.use((req, res, next) => { res.header('Access-Control-Allow-Origin', '*'); next(); });
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -36,7 +37,6 @@ app.get('/callback', async (req, res) => {
     try {
       const payload = JSON.parse(Buffer.from(storedTokens.access_token.split('.')[1], 'base64').toString());
       orgId = (payload.org_ids && payload.org_ids[0]) || payload.org_id || payload.organisation_id;
-      console.log('Org ID:', orgId);
     } catch(e) { console.log('JWT decode error:', e.message); }
     res.redirect('/');
   } catch (err) {
