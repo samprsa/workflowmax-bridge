@@ -3,7 +3,13 @@ const axios = require('axios');
 const app = express();
 
 app.use(express.json());
-app.use((req, res, next) => { res.header('Access-Control-Allow-Origin', '*'); next(); });
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', '*');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -61,22 +67,4 @@ app.get('/jobs', async (req, res) => {
   try {
     const token = await getValidToken();
     const headers = { Authorization: `Bearer ${token}`, account_id: orgId };
-    const response = await axios.get('https://api.workflowmax2.com/job.api/current', { headers });
-    res.json(response.data);
-  } catch (err) {
-    res.status(500).json({ error: err.message, details: err.response?.data, orgId });
-  }
-});
-
-app.get('/debug', async (req, res) => {
-  try {
-    const token = await getValidToken();
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    res.json({ orgId, jwtPayload: payload });
-  } catch(err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Running on port ${PORT}`));
+    const response = await axios.get('
