@@ -33,11 +33,9 @@ app.get('/callback', async (req, res) => {
     );
     storedTokens = response.data;
     storedTokens.expires_at = Date.now() + (storedTokens.expires_in * 1000);
-    // Decode org ID from JWT
     try {
       const payload = JSON.parse(Buffer.from(storedTokens.access_token.split('.')[1], 'base64').toString());
       orgId = (payload.org_ids && payload.org_ids[0]) || payload.org_id || payload.organisation_id;
-      console.log('JWT payload keys:', Object.keys(payload));
       console.log('Org ID:', orgId);
     } catch(e) { console.log('JWT decode error:', e.message); }
     res.redirect('/');
@@ -62,8 +60,7 @@ async function getValidToken() {
 app.get('/jobs', async (req, res) => {
   try {
     const token = await getValidToken();
-    const headers = { Authorization: `Bearer ${token}` };
-    if (orgId) headers.account_id = orgId;
+    const headers = { Authorization: `Bearer ${token}`, account_id: orgId };
     const response = await axios.get('https://api.workflowmax2.com/job.api/current', { headers });
     res.json(response.data);
   } catch (err) {
