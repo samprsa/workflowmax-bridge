@@ -36,7 +36,7 @@ app.get('/callback', async (req, res) => {
     // Decode org ID from JWT
     try {
       const payload = JSON.parse(Buffer.from(storedTokens.access_token.split('.')[1], 'base64').toString());
-      orgId = payload.org_id || payload.organisation_id || payload.account_id;
+      orgId = (payload.org_ids && payload.org_ids[0]) || payload.org_id || payload.organisation_id;
       console.log('JWT payload keys:', Object.keys(payload));
       console.log('Org ID:', orgId);
     } catch(e) { console.log('JWT decode error:', e.message); }
